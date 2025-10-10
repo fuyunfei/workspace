@@ -22,11 +22,6 @@ import {
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "AI Create",
@@ -293,7 +288,7 @@ export function AppSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
-          <NavUser user={data.user} />
+          <NavUser />
         </SidebarFooter>
       )}
       <SidebarRail />

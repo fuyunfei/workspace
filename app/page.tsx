@@ -34,6 +34,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { AuthProvider, useAuth } from "@/hooks/use-auth"
+import { LoginDialog } from "@/components/login-dialog"
 
 const useCases = [
   {
@@ -93,6 +95,7 @@ function PageContent() {
   const [isCreating, setIsCreating] = useState(false)
   const [selectedModel, setSelectedModel] = useState("sonnet-3.5")
   const { setOpen } = useSidebar()
+  const { requireAuth } = useAuth()
 
   const handleConversationSelect = (name: string | null) => {
     setSelectedConversation(name)
@@ -118,6 +121,11 @@ function PageContent() {
   }
 
   const handleQuickStart = (useCaseId: string) => {
+    // 检查登录状态
+    if (!requireAuth()) {
+      return
+    }
+
     const useCase = useCases.find((uc) => uc.id === useCaseId)
     setIsCreating(true)
 
@@ -130,6 +138,11 @@ function PageContent() {
 
   const handleSubmit = () => {
     if (!inputValue.trim() || isCreating) return
+
+    // 检查登录状态
+    if (!requireAuth()) {
+      return
+    }
 
     setIsCreating(true)
 
@@ -354,8 +367,11 @@ function PageContent() {
 
 export default function Page() {
   return (
-    <SidebarProvider>
-      <PageContent />
-    </SidebarProvider>
+    <AuthProvider>
+      <SidebarProvider>
+        <PageContent />
+        <LoginDialog />
+      </SidebarProvider>
+    </AuthProvider>
   )
 }
