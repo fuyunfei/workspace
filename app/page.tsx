@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { NavMain } from "@/components/nav-main"
-import { NavRecent } from "@/components/nav-recent"
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -25,93 +23,9 @@ import {
   Lightbulb,
   Users,
   Loader2,
-  MessageSquare,
-  Trash2,
-  Gift,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
-const data = {
-  navMain: [
-    {
-      title: "AI Create",
-      url: "#",
-      icon: Sparkles,
-      isActive: false,
-    },
-    {
-      title: "New Blank Slide",
-      url: "#",
-      icon: FileText,
-      isActive: false,
-    },
-    {
-      title: "Refer & Earn",
-      url: "#",
-      icon: Gift,
-      isActive: false,
-    },
-    {
-      title: "Trash",
-      url: "#",
-      icon: Trash2,
-      isActive: false,
-    },
-  ],
-  recent: [
-    {
-      name: "Landing Page Design",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Dashboard UI Mockup",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Mobile App Wireframe",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "E-commerce Product Page",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Social Media Feed",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Admin Panel Layout",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Portfolio Website",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Login & Signup Forms",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Blog Post Template",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Pricing Page Design",
-      url: "#",
-      icon: MessageSquare,
-    },
-  ],
-}
 
 const useCases = [
   {
@@ -163,67 +77,14 @@ function PageContent() {
   const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [isCreating, setIsCreating] = useState(false)
-  const [isWorkspaceHovered, setIsWorkspaceHovered] = useState(false)
   const { setOpen } = useSidebar()
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleConversationSelect = (name: string | null) => {
     setSelectedConversation(name)
-    setIsWorkspaceHovered(false) // Close overlay sidebar
     if (name) {
-      setOpen(true) // Open the main sidebar to show chat
+      setOpen(true)
     }
   }
-
-  const handleNavMainSelect = (title: string) => {
-    if (title === "AI Create") {
-      // Return to main workspace page
-      setSelectedConversation(null)
-      setIsWorkspaceHovered(false) // Close overlay sidebar
-      setOpen(true) // Open sidebar to show workspace navigation
-    }
-    // Handle other nav items as needed
-  }
-
-  const handleWorkspaceEnter = () => {
-    // Clear any pending hide timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-    setIsWorkspaceHovered(true)
-  }
-
-  const handleWorkspaceLeave = () => {
-    // Start a delay before hiding
-    hoverTimeoutRef.current = setTimeout(() => {
-      setIsWorkspaceHovered(false)
-    }, 100) // 100ms delay to allow mouse to reach sidebar
-  }
-
-  const handleSidebarEnter = () => {
-    // Clear any pending hide timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-  }
-
-  const handleSidebarLeave = () => {
-    // Start a delay before hiding
-    hoverTimeoutRef.current = setTimeout(() => {
-      setIsWorkspaceHovered(false)
-    }, 100) // 100ms delay
-  }
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const handleUseCaseClick = (useCaseId: string) => {
     if (selectedUseCase === useCaseId) {
@@ -290,29 +151,8 @@ function PageContent() {
       <AppSidebar
         selectedConversation={selectedConversation}
         onConversationChange={handleConversationSelect}
-        onWorkspaceHover={handleWorkspaceEnter}
-        onWorkspaceLeave={handleWorkspaceLeave}
       />
       <SidebarInset className="relative">
-        {/* Overlay Workspace Sidebar - Shows workspace navigation */}
-        {selectedConversation && isWorkspaceHovered && (
-          <div
-            className="fixed left-0 top-[49px] z-50 h-[calc(100vh-49px)] w-64 border-r bg-background shadow-2xl animate-in slide-in-from-left-5 duration-300 flex flex-col"
-            onMouseEnter={handleSidebarEnter}
-            onMouseLeave={handleSidebarLeave}
-          >
-            <div className="flex-1 overflow-auto">
-              <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
-              <NavRecent
-                recent={data.recent}
-                onSelect={handleConversationSelect}
-                searchQuery=""
-                onSearchChange={() => {}}
-              />
-            </div>
-          </div>
-        )}
-
         <div className="h-screen">
           {selectedConversation ? (
             <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
