@@ -26,6 +26,14 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const useCases = [
   {
@@ -72,11 +80,18 @@ const useCases = [
   },
 ]
 
+const models = [
+  { id: "sonnet-3.5", name: "Sonnet 3.5" },
+  { id: "opus-4.1", name: "Opus 4.1" },
+  { id: "gpt-4", name: "GPT-4" },
+]
+
 function PageContent() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const [selectedModel, setSelectedModel] = useState("sonnet-3.5")
   const { setOpen } = useSidebar()
 
   const handleConversationSelect = (name: string | null) => {
@@ -103,8 +118,8 @@ function PageContent() {
   }
 
   const handleQuickStart = (useCaseId: string) => {
-    setIsCreating(true)
     const useCase = useCases.find((uc) => uc.id === useCaseId)
+    setIsCreating(true)
 
     setTimeout(() => {
       setSelectedConversation(useCase?.title || "New Design")
@@ -157,10 +172,12 @@ function PageContent() {
           {selectedConversation ? (
             <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
               {/* Canvas header with project name */}
-              <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <h1 className="text-sm font-semibold">{selectedConversation}</h1>
+              <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger className="-ml-1" />
+                  <Separator orientation="vertical" className="mr-2 h-4" />
+                  <h1 className="text-sm font-semibold">{selectedConversation}</h1>
+                </div>
               </header>
               {/* Canvas content */}
               <div className="flex flex-1 items-center justify-center p-8">
@@ -176,7 +193,7 @@ function PageContent() {
           ) : (
             <div className="flex h-full flex-col bg-[#f5f3f0] animate-in fade-in zoom-in-95 duration-500">
               {/* Workspace header with toggle */}
-              <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+              <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
                 <SidebarTrigger className="-ml-1" />
               </header>
               {/* Workspace content */}
@@ -186,7 +203,11 @@ function PageContent() {
                 <div className="rounded-2xl border bg-background p-6 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-lg"
+                      >
                         <Plus className="h-5 w-5" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
@@ -223,10 +244,27 @@ function PageContent() {
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" className="gap-1 text-sm font-normal">
-                        Opus 4.1
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="gap-1 text-sm font-normal">
+                            {models.find((m) => m.id === selectedModel)?.name}
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            Models
+                          </DropdownMenuLabel>
+                          {models.map((model) => (
+                            <DropdownMenuItem
+                              key={model.id}
+                              onClick={() => setSelectedModel(model.id)}
+                            >
+                              {model.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button
                         size="icon"
                         onClick={handleSubmit}
@@ -282,7 +320,7 @@ function PageContent() {
                           }`}
                         >
                           {isSelected && (
-                            <div className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground animate-in fade-in zoom-in-95 duration-200">
+                            <div className="absolute -top-2 left-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground animate-in fade-in zoom-in-95 duration-200">
                               Click again to start
                             </div>
                           )}
