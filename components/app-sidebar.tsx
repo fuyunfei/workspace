@@ -18,7 +18,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarHeader,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 
@@ -109,19 +108,34 @@ const data = {
   ],
 }
 
-function WorkspaceHeader() {
+function UnifiedHeader({
+  onWorkspaceHover,
+  onWorkspaceLeave,
+  onPageOnClick,
+  isInChatMode = false,
+}: {
+  onWorkspaceHover?: () => void
+  onWorkspaceLeave?: () => void
+  onPageOnClick?: () => void
+  isInChatMode?: boolean
+}) {
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
 
+  if (isCollapsed) {
+    return null
+  }
+
   return (
     <SidebarHeader className="flex h-12 shrink-0 flex-row items-center gap-2 border-b px-4">
-      <SidebarTrigger className="-ml-1" />
-      {!isCollapsed && (
-        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-lg font-semibold">PageOn</h1>
-        </div>
-      )}
+      <button
+        onClick={onPageOnClick}
+        onMouseEnter={isInChatMode ? onWorkspaceHover : undefined}
+        onMouseLeave={isInChatMode ? onWorkspaceLeave : undefined}
+        className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-muted-foreground"
+      >
+        PageOn
+      </button>
     </SidebarHeader>
   )
 }
@@ -129,10 +143,16 @@ function WorkspaceHeader() {
 export function AppSidebar({
   selectedConversation,
   onConversationChange,
+  onWorkspaceHover,
+  onWorkspaceLeave,
+  hideHeader = false,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   selectedConversation?: string | null
   onConversationChange?: (conversation: string | null) => void
+  onWorkspaceHover?: () => void
+  onWorkspaceLeave?: () => void
+  hideHeader?: boolean
 }) {
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -140,25 +160,40 @@ export function AppSidebar({
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const handleNavMainSelect = (title: string) => {
+    if (title === "AI Create") {
+      // Return to main workspace page
+      onConversationChange?.(null)
+    }
+    // Handle other nav items as needed
+  }
+
   return (
     <Sidebar collapsible={selectedConversation ? "offcanvas" : "icon"} {...props}>
+      {!hideHeader && (
+        <UnifiedHeader
+          onWorkspaceHover={onWorkspaceHover}
+          onWorkspaceLeave={onWorkspaceLeave}
+          onPageOnClick={() => handleNavMainSelect("AI Create")}
+          isInChatMode={!!selectedConversation}
+        />
+      )}
       {selectedConversation ? (
         <SidebarContent className="flex flex-col animate-in fade-in slide-in-from-left-4 duration-300">
-          <SidebarChatView conversationName={selectedConversation} />
+          <SidebarChatView
+            conversationName={selectedConversation}
+          />
         </SidebarContent>
       ) : (
-        <>
-          <WorkspaceHeader />
-          <SidebarContent className="animate-in fade-in slide-in-from-left-4 duration-300">
-            <NavMain items={data.navMain} />
-            <NavRecent
-              recent={filteredRecent}
-              onSelect={onConversationChange}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
-          </SidebarContent>
-        </>
+        <SidebarContent className="animate-in fade-in slide-in-from-left-4 duration-300">
+          <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
+          <NavRecent
+            recent={filteredRecent}
+            onSelect={onConversationChange}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        </SidebarContent>
       )}
       {!selectedConversation && (
         <SidebarFooter className="animate-in fade-in slide-in-from-bottom-2 duration-300">

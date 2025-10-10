@@ -15,7 +15,13 @@ interface Message {
   timestamp: Date
 }
 
-export function SidebarChatView({ conversationName }: { conversationName: string }) {
+interface SidebarChatViewProps {
+  conversationName: string
+}
+
+export function SidebarChatView({
+  conversationName
+}: SidebarChatViewProps) {
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
 

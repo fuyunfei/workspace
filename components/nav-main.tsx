@@ -12,6 +12,7 @@ import {
 
 export function NavMain({
   items,
+  onSelect,
 }: {
   items: {
     title: string
@@ -19,6 +20,7 @@ export function NavMain({
     icon?: LucideIcon
     isActive?: boolean
   }[]
+  onSelect?: (title: string) => void
 }) {
   return (
     <SidebarGroup>
@@ -30,7 +32,11 @@ export function NavMain({
             className="animate-in fade-in slide-in-from-left-2 duration-200"
             style={{ animationDelay: `${index * 30}ms` }}
           >
-            <SidebarMenuButton tooltip={item.title} isActive={item.isActive}>
+            <SidebarMenuButton
+              tooltip={item.title}
+              isActive={item.isActive}
+              onClick={() => onSelect?.(item.title)}
+            >
               {item.icon && <item.icon />}
               <span>{item.title}</span>
             </SidebarMenuButton>

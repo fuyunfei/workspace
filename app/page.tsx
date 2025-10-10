@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { NavMain } from "@/components/nav-main"
+import { NavRecent } from "@/components/nav-recent"
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -16,7 +18,6 @@ import {
   Code,
   Coffee,
   Sparkles,
-  ChevronRight,
   Presentation,
   BookOpen,
   FileText,
@@ -24,9 +25,93 @@ import {
   Lightbulb,
   Users,
   Loader2,
+  MessageSquare,
+  Trash2,
+  Gift,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
+const data = {
+  navMain: [
+    {
+      title: "AI Create",
+      url: "#",
+      icon: Sparkles,
+      isActive: false,
+    },
+    {
+      title: "New Blank Slide",
+      url: "#",
+      icon: FileText,
+      isActive: false,
+    },
+    {
+      title: "Refer & Earn",
+      url: "#",
+      icon: Gift,
+      isActive: false,
+    },
+    {
+      title: "Trash",
+      url: "#",
+      icon: Trash2,
+      isActive: false,
+    },
+  ],
+  recent: [
+    {
+      name: "Landing Page Design",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Dashboard UI Mockup",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Mobile App Wireframe",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "E-commerce Product Page",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Social Media Feed",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Admin Panel Layout",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Portfolio Website",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Login & Signup Forms",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Blog Post Template",
+      url: "#",
+      icon: MessageSquare,
+    },
+    {
+      name: "Pricing Page Design",
+      url: "#",
+      icon: MessageSquare,
+    },
+  ],
+}
 
 const useCases = [
   {
@@ -78,12 +163,67 @@ function PageContent() {
   const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const [isWorkspaceHovered, setIsWorkspaceHovered] = useState(false)
   const { setOpen } = useSidebar()
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const handleWorkspaceClick = () => {
-    setSelectedConversation(null)
-    setOpen(true) // Ensure sidebar is open to show navigation
+  const handleConversationSelect = (name: string | null) => {
+    setSelectedConversation(name)
+    setIsWorkspaceHovered(false) // Close overlay sidebar
+    if (name) {
+      setOpen(true) // Open the main sidebar to show chat
+    }
   }
+
+  const handleNavMainSelect = (title: string) => {
+    if (title === "AI Create") {
+      // Return to main workspace page
+      setSelectedConversation(null)
+      setIsWorkspaceHovered(false) // Close overlay sidebar
+      setOpen(true) // Open sidebar to show workspace navigation
+    }
+    // Handle other nav items as needed
+  }
+
+  const handleWorkspaceEnter = () => {
+    // Clear any pending hide timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setIsWorkspaceHovered(true)
+  }
+
+  const handleWorkspaceLeave = () => {
+    // Start a delay before hiding
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsWorkspaceHovered(false)
+    }, 100) // 100ms delay to allow mouse to reach sidebar
+  }
+
+  const handleSidebarEnter = () => {
+    // Clear any pending hide timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+  }
+
+  const handleSidebarLeave = () => {
+    // Start a delay before hiding
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsWorkspaceHovered(false)
+    }, 100) // 100ms delay
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleUseCaseClick = (useCaseId: string) => {
     if (selectedUseCase === useCaseId) {
@@ -147,39 +287,62 @@ function PageContent() {
 
   return (
     <>
-      <AppSidebar selectedConversation={selectedConversation} onConversationChange={setSelectedConversation} />
+      <AppSidebar
+        selectedConversation={selectedConversation}
+        onConversationChange={handleConversationSelect}
+        onWorkspaceHover={handleWorkspaceEnter}
+        onWorkspaceLeave={handleWorkspaceLeave}
+      />
       <SidebarInset className="relative">
-        {selectedConversation && (
-          <header className="absolute left-0 right-0 top-0 z-10 flex shrink-0 items-center gap-2 bg-transparent px-4 h-12 animate-in fade-in slide-in-from-top-2 duration-300">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <div className="flex items-center gap-2 text-sm">
-              <button
-                onClick={handleWorkspaceClick}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                workspace
-              </button>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold text-foreground">{selectedConversation}</span>
+        {/* Overlay Workspace Sidebar - Shows workspace navigation */}
+        {selectedConversation && isWorkspaceHovered && (
+          <div
+            className="fixed left-0 top-[49px] z-50 h-[calc(100vh-49px)] w-64 border-r bg-background shadow-2xl animate-in slide-in-from-left-5 duration-300 flex flex-col"
+            onMouseEnter={handleSidebarEnter}
+            onMouseLeave={handleSidebarLeave}
+          >
+            <div className="flex-1 overflow-auto">
+              <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
+              <NavRecent
+                recent={data.recent}
+                onSelect={handleConversationSelect}
+                searchQuery=""
+                onSearchChange={() => {}}
+              />
             </div>
-          </header>
+          </div>
         )}
+
         <div className="h-screen">
           {selectedConversation ? (
-            <div className="flex h-full items-center justify-center bg-muted/20 p-8 animate-in fade-in zoom-in-95 duration-500">
-              <div className="flex h-full w-full max-w-4xl items-center justify-center rounded-lg border-2 border-dashed bg-background">
-                <div className="text-center text-muted-foreground">
-                  <Palette className="mx-auto mb-4 h-12 w-12" />
-                  <p className="text-lg font-medium">Design Canvas</p>
-                  <p className="mt-1 text-sm">AI-generated designs will appear here</p>
+            <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
+              {/* Canvas header with project name */}
+              <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <h1 className="text-sm font-semibold">{selectedConversation}</h1>
+              </header>
+              {/* Canvas content */}
+              <div className="flex flex-1 items-center justify-center p-8">
+                <div className="flex h-full w-full max-w-4xl items-center justify-center rounded-lg border-2 border-dashed bg-background">
+                  <div className="text-center text-muted-foreground">
+                    <Palette className="mx-auto mb-4 h-12 w-12" />
+                    <p className="text-lg font-medium">Design Canvas</p>
+                    <p className="mt-1 text-sm">AI-generated designs will appear here</p>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center bg-[#f5f3f0] p-8 animate-in fade-in zoom-in-95 duration-500">
-              <div className="w-full max-w-3xl space-y-8">
-                <h1 className="text-center font-serif text-5xl font-normal text-foreground">yahaha returns!</h1>
+            <div className="flex h-full flex-col bg-[#f5f3f0] animate-in fade-in zoom-in-95 duration-500">
+              {/* Workspace header with toggle */}
+              <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+                <SidebarTrigger className="-ml-1" />
+              </header>
+              {/* Workspace content */}
+              <div className="flex flex-1 items-center justify-center p-8">
+                <div className="w-full max-w-3xl space-y-8">
+                  <h1 className="text-center font-serif text-5xl font-normal text-foreground">yahaha returns!</h1>
                 <div className="rounded-2xl border bg-background p-6 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="flex gap-2">
@@ -303,6 +466,7 @@ function PageContent() {
                 </div>
               </div>
             </div>
+          </div>
           )}
         </div>
       </SidebarInset>
