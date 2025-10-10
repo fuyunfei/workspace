@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/hooks/use-auth";
+import { LoginDialog } from "@/components/login-dialog";
+import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+          <LoginDialog />
+          <ProUpgradeDialog />
+        </AuthProvider>
       </body>
     </html>
   );

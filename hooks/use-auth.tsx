@@ -7,6 +7,7 @@ export type User = {
   email: string
   name: string
   avatar?: string
+  plan: "free" | "pro"
 }
 
 type AuthContextType = {
@@ -17,6 +18,13 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   requireAuth: (action?: () => void) => boolean
+
+  // Pro related
+  isPro: boolean
+  showUpgradeDialog: boolean
+  setShowUpgradeDialog: (show: boolean) => void
+  requirePro: () => boolean
+  upgradeToPro: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -26,6 +34,7 @@ const AUTH_STORAGE_KEY = "auth_user"
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
   // 初始化：从 localStorage 读取登录状态
@@ -43,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isAuthenticated = !!user
+  const isPro = user?.plan === "pro"
 
   const login = useCallback(async (email: string, password: string) => {
     // 模拟登录 API 调用
@@ -54,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       name: email.split("@")[0],
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+      plan: "free", // 默认为 free plan
     }
 
     setUser(userData)
@@ -68,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     // 清除 localStorage
     localStorage.removeItem(AUTH_STORAGE_KEY)
+    // 清理对话框状态
+    setShowUpgradeDialog(false)
   }, [])
 
   const requireAuth = useCallback((action?: () => void): boolean => {
@@ -82,6 +95,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true
   }, [isAuthenticated])
 
+  const requirePro = useCallback((): boolean => {
+    // 先检查是否登录
+    if (!requireAuth()) {
+      return false
+    }
+    // 再检查是否是 Pro 用户
+    if (!isPro) {
+      setShowUpgradeDialog(true)
+      return false
+    }
+    return true
+  }, [requireAuth, isPro])
+
+  const upgradeToPro = useCallback(async () => {
+    if (!user) return
+
+    // 模拟升级 API 调用
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // 更新用户数据
+    const updatedUser: User = {
+      ...user,
+      plan: "pro",
+    }
+
+    setUser(updatedUser)
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser))
+
+    // 不在这里关闭对话框，让调用者决定
+  }, [user])
+
   return (
     <AuthContext.Provider
       value={{
@@ -92,6 +136,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         requireAuth,
+        isPro,
+        showUpgradeDialog,
+        setShowUpgradeDialog,
+        requirePro,
+        upgradeToPro,
       }}
     >
       {children}

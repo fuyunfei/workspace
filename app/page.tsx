@@ -34,8 +34,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { AuthProvider, useAuth } from "@/hooks/use-auth"
-import { LoginDialog } from "@/components/login-dialog"
+import { useAuth } from "@/hooks/use-auth"
+import { Badge } from "@/components/ui/badge"
 
 const useCases = [
   {
@@ -83,9 +83,9 @@ const useCases = [
 ]
 
 const models = [
-  { id: "sonnet-3.5", name: "Sonnet 3.5" },
-  { id: "opus-4.1", name: "Opus 4.1" },
-  { id: "gpt-4", name: "GPT-4" },
+  { id: "sonnet-3.5", name: "Sonnet 3.5", requiresPro: false },
+  { id: "opus-4.1", name: "Opus 4.1", requiresPro: true },
+  { id: "gpt-4", name: "GPT-4", requiresPro: true },
 ]
 
 function PageContent() {
@@ -95,13 +95,25 @@ function PageContent() {
   const [isCreating, setIsCreating] = useState(false)
   const [selectedModel, setSelectedModel] = useState("sonnet-3.5")
   const { setOpen } = useSidebar()
-  const { requireAuth } = useAuth()
+  const { requireAuth, requirePro, isPro } = useAuth()
 
   const handleConversationSelect = (name: string | null) => {
     setSelectedConversation(name)
     if (name) {
       setOpen(true)
     }
+  }
+
+  const handleModelSelect = (modelId: string) => {
+    const model = models.find((m) => m.id === modelId)
+    if (!model) return
+
+    // Check if model requires Pro
+    if (model.requiresPro && !requirePro()) {
+      return
+    }
+
+    setSelectedModel(modelId)
   }
 
   const handleUseCaseClick = (useCaseId: string) => {
@@ -271,9 +283,14 @@ function PageContent() {
                           {models.map((model) => (
                             <DropdownMenuItem
                               key={model.id}
-                              onClick={() => setSelectedModel(model.id)}
+                              onClick={() => handleModelSelect(model.id)}
                             >
-                              {model.name}
+                              <span className="flex items-center gap-2">
+                                {model.name}
+                                {model.requiresPro && !isPro && (
+                                  <Badge variant="secondary" className="text-xs">Pro</Badge>
+                                )}
+                              </span>
                             </DropdownMenuItem>
                           ))}
                         </DropdownMenuContent>
@@ -367,11 +384,8 @@ function PageContent() {
 
 export default function Page() {
   return (
-    <AuthProvider>
-      <SidebarProvider>
-        <PageContent />
-        <LoginDialog />
-      </SidebarProvider>
-    </AuthProvider>
+    <SidebarProvider>
+      <PageContent />
+    </SidebarProvider>
   )
 }

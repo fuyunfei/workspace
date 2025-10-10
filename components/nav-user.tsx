@@ -7,6 +7,7 @@ import {
   CreditCard,
   LogOut,
   User,
+  Sparkles,
 } from "lucide-react"
 
 import {
@@ -31,10 +32,11 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { isAuthenticated, user, setShowLoginDialog, logout } = useAuth()
+  const { isAuthenticated, user, setShowLoginDialog, logout, isPro, setShowUpgradeDialog } = useAuth()
 
   // 如果未登录，显示登录按钮
   if (!isAuthenticated) {
@@ -72,7 +74,10 @@ export function NavUser() {
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user?.name}</span>
+                <span className="truncate font-medium flex items-center gap-2">
+                  {user?.name}
+                  {isPro && <Badge variant="default" className="text-[10px] px-1.5 py-0">Pro</Badge>}
+                </span>
                 <span className="truncate text-xs">{user?.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -99,6 +104,15 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {!isPro && (
+              <>
+                <DropdownMenuItem onClick={() => setShowUpgradeDialog(true)}>
+                  <Sparkles />
+                  Upgrade to Pro
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
