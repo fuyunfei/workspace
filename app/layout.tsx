@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
+import { WorkspaceProvider } from "@/hooks/use-workspace";
 import { LoginDialog } from "@/components/login-dialog";
 import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 
@@ -31,9 +32,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {children}
-          <LoginDialog />
-          <ProUpgradeDialog />
+          <WorkspaceProvider>
+            {children}
+            <LoginDialog />
+            <ProUpgradeDialog />
+          </WorkspaceProvider>
         </AuthProvider>
       </body>
     </html>

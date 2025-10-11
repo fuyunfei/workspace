@@ -43,15 +43,13 @@ export function NavUser() {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <Button
+          <SidebarMenuButton
             onClick={() => setShowLoginDialog(true)}
-            variant="outline"
-            className="w-full justify-start gap-2"
-            size="lg"
+            tooltip="Sign in"
           >
             <User className="h-4 w-4" />
-            Sign in
-          </Button>
+            <span>Sign in</span>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
     )

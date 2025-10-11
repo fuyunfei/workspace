@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/hooks/use-auth"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { Badge } from "@/components/ui/badge"
 
 const useCases = [
@@ -89,20 +90,16 @@ const models = [
 ]
 
 function PageContent() {
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [selectedModel, setSelectedModel] = useState("sonnet-3.5")
   const { setOpen } = useSidebar()
   const { requireAuth, requirePro, isPro } = useAuth()
+  const { selectedPageId, selectPage, createPage, pages } = useWorkspace()
 
-  const handleConversationSelect = (name: string | null) => {
-    setSelectedConversation(name)
-    if (name) {
-      setOpen(true)
-    }
-  }
+  // Get selected page data
+  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) : null
 
   const handleModelSelect = (modelId: string) => {
     const model = models.find((m) => m.id === modelId)
@@ -142,9 +139,11 @@ function PageContent() {
     setIsCreating(true)
 
     setTimeout(() => {
-      setSelectedConversation(useCase?.title || "New Design")
+      const newPage = createPage(useCase?.title || "New Design")
+      selectPage(newPage.id)
       setSelectedUseCase(null)
       setIsCreating(false)
+      setOpen(true)
     }, 800)
   }
 
@@ -164,14 +163,16 @@ function PageContent() {
         ? useCases.find((uc) => uc.id === selectedUseCase)?.title
         : "New Design"
 
-      // Create conversation with title based on input or use case
-      const conversationTitle = inputValue.slice(0, 50) || useCaseTitle || "Untitled"
-      setSelectedConversation(conversationTitle)
+      // Create page with title based on input or use case
+      const pageTitle = inputValue.slice(0, 50) || useCaseTitle || "Untitled"
+      const newPage = createPage(pageTitle)
+      selectPage(newPage.id)
 
       // Reset form
       setInputValue("")
       setSelectedUseCase(null)
       setIsCreating(false)
+      setOpen(true)
     }, 800)
   }
 
@@ -188,20 +189,17 @@ function PageContent() {
 
   return (
     <>
-      <AppSidebar
-        selectedConversation={selectedConversation}
-        onConversationChange={handleConversationSelect}
-      />
+      <AppSidebar />
       <SidebarInset className="relative">
         <div className="h-screen">
-          {selectedConversation ? (
+          {selectedPage ? (
             <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
               {/* Canvas header with project name */}
               <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
                 <div className="flex items-center gap-2">
                   <SidebarTrigger className="-ml-1" />
                   <Separator orientation="vertical" className="mr-2 h-4" />
-                  <h1 className="text-sm font-semibold">{selectedConversation}</h1>
+                  <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
                 </div>
               </header>
               {/* Canvas content */}
@@ -383,8 +381,10 @@ function PageContent() {
 }
 
 export default function Page() {
+  const { isAuthenticated } = useAuth()
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={isAuthenticated}>
       <PageContent />
     </SidebarProvider>
   )

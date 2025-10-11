@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from "react"
 import type * as React from "react"
-import { MessageSquare, Sparkles, FileText, Gift, Trash2, HelpCircle, MessageCircle } from "lucide-react"
+import { MessageSquare, Sparkles, FileText, Gift, Trash2, HelpCircle, MessageCircle, Globe, Check } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
-import { NavRecent } from "@/components/nav-recent"
+import { NavPages } from "@/components/nav-pages"
+import { useWorkspace } from "@/hooks/use-workspace"
+import { useAuth } from "@/hooks/use-auth"
 import { NavUser } from "@/components/nav-user"
 import { SidebarChatView } from "@/components/sidebar-chat-view"
 import {
@@ -19,6 +21,12 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // This is sample data.
 const data = {
@@ -28,24 +36,28 @@ const data = {
       url: "#",
       icon: Sparkles,
       isActive: false,
+      requireAuth: false, // Public - triggers login when clicked
     },
     {
       title: "New Blank Slide",
       url: "#",
       icon: FileText,
       isActive: false,
+      requireAuth: false, // Public - triggers login when clicked
     },
     {
       title: "Refer & Earn",
       url: "#",
       icon: Gift,
       isActive: false,
+      requireAuth: false, // Public - triggers login when clicked
     },
     {
       title: "Trash",
       url: "#",
       icon: Trash2,
       isActive: false,
+      requireAuth: true, // Only show when logged in
     },
   ],
   recent: [
@@ -131,27 +143,48 @@ function UnifiedHeader({
   )
 }
 
-export function AppSidebar({
-  selectedConversation,
-  onConversationChange,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & {
-  selectedConversation?: string | null
-  onConversationChange?: (conversation: string | null) => void
-}) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showWorkspace, setShowWorkspace] = useState(false)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+const languages = [
+  { code: "en", name: "English" },
+  { code: "zh", name: "中文" },
+  { code: "es", name: "Español" },
+  { code: "fr", name: "Français" },
+  { code: "de", name: "Deutsch" },
+  { code: "ja", name: "日本語" },
+]
 
-  const filteredRecent = data.recent.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+export function AppSidebar({
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
+  const [showWorkspace, setShowWorkspace] = useState(false)
+  const [selectedLanguage, setSelectedLanguage] = useState("en")
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const { selectedPageId, selectPage } = useWorkspace()
+  const { requireAuth } = useAuth()
+  const { isMobile } = useSidebar()
 
   const handleNavMainSelect = (title: string) => {
     if (title === "AI Create") {
+      // Require login before proceeding
+      if (!requireAuth()) {
+        return
+      }
       // Return to main workspace page
-      onConversationChange?.(null)
+      selectPage(null)
       setShowWorkspace(false)
+    } else if (title === "New Blank Slide") {
+      // Require login before creating
+      if (!requireAuth()) {
+        return
+      }
+      // Create a new blank page
+      selectPage(null)
+      setShowWorkspace(false)
+    } else if (title === "Refer & Earn") {
+      // Require login before accessing referral program
+      if (!requireAuth()) {
+        return
+      }
+      // Handle referral program
     }
     // Handle other nav items as needed
   }
@@ -166,7 +199,7 @@ export function AppSidebar({
   }
 
   const handleSidebarMouseEnter = () => {
-    if (!selectedConversation) return
+    if (!selectedPageId) return
     // Only clear timeout, don't actively show workspace
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
@@ -175,7 +208,7 @@ export function AppSidebar({
   }
 
   const handleSidebarMouseLeave = (e: React.MouseEvent) => {
-    if (!selectedConversation) return
+    if (!selectedPageId) return
 
     // Check if any dropdown/menu is open in the sidebar
     const hasOpenMenu = (e.currentTarget as HTMLElement).querySelector('[data-state="open"]')
@@ -200,7 +233,7 @@ export function AppSidebar({
 
   // Monitor when dropdowns close and hide workspace if mouse is outside
   useEffect(() => {
-    if (!showWorkspace || !selectedConversation) return
+    if (!showWorkspace || !selectedPageId) return
 
     const checkDropdownClose = () => {
       // Use a small delay to let DOM update
@@ -240,14 +273,14 @@ export function AppSidebar({
       document.removeEventListener('click', checkDropdownClose)
       document.removeEventListener('mousemove', trackMouse)
     }
-  }, [showWorkspace, selectedConversation])
+  }, [showWorkspace, selectedPageId])
 
   // Determine what content to show
-  const showWorkspaceContent = !selectedConversation || showWorkspace
+  const showWorkspaceContent = !selectedPageId || showWorkspace
 
   return (
     <Sidebar
-      collapsible={selectedConversation ? "offcanvas" : "icon"}
+      collapsible={selectedPageId ? "offcanvas" : "icon"}
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
       {...props}
@@ -255,26 +288,47 @@ export function AppSidebar({
       <UnifiedHeader
         onPageOnClick={() => handleNavMainSelect("AI Create")}
         onPageOnHover={handlePageOnHover}
-        isInChatMode={!!selectedConversation}
+        isInChatMode={!!selectedPageId}
       />
       <SidebarContent className="animate-in fade-in slide-in-from-left-4 duration-300">
         {showWorkspaceContent ? (
           <>
             <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
-            <NavRecent
-              recent={filteredRecent}
-              onSelect={onConversationChange}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
+            <NavPages />
           </>
         ) : (
-          <SidebarChatView conversationName={selectedConversation!} />
+          <SidebarChatView conversationName={selectedPageId!} />
         )}
       </SidebarContent>
       {showWorkspaceContent && (
         <SidebarFooter className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton tooltip="Language">
+                    <Globe />
+                    <span>{languages.find((lang) => lang.code === selectedLanguage)?.name}</span>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side={isMobile ? "top" : "right"}
+                  align="start"
+                  className="w-48"
+                >
+                  {languages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setSelectedLanguage(lang.code)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{lang.name}</span>
+                      {selectedLanguage === lang.code && <Check className="h-4 w-4" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Help">
                 <HelpCircle />
