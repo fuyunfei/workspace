@@ -123,22 +123,62 @@ function UnifiedHeader({
   onPageOnHover?: () => void
   isInChatMode?: boolean
 }) {
-  const { state } = useSidebar()
+  const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === "collapsed"
-
-  if (isCollapsed) {
-    return null
-  }
 
   return (
     <SidebarHeader className="flex h-12 shrink-0 flex-row items-center gap-2 border-b px-4">
-      <button
-        onClick={onPageOnClick}
-        onMouseEnter={isInChatMode ? onPageOnHover : undefined}
-        className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-muted-foreground"
-      >
-        PageOn
-      </button>
+      {!isCollapsed ? (
+        <>
+          <button
+            onClick={onPageOnClick}
+            onMouseEnter={isInChatMode ? onPageOnHover : undefined}
+            className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-muted-foreground"
+          >
+            PageOn
+          </button>
+          <button
+            onClick={toggleSidebar}
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M9 3v18" />
+            </svg>
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={toggleSidebar}
+          className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
+          title="Expand sidebar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
+          </svg>
+        </button>
+      )}
     </SidebarHeader>
   )
 }

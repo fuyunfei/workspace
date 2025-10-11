@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import {
   Palette,
   Plus,
@@ -196,11 +195,7 @@ function PageContent() {
             <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
               {/* Canvas header with project name */}
               <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger className="-ml-1" />
-                  <Separator orientation="vertical" className="mr-2 h-4" />
-                  <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
-                </div>
+                <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
               </header>
               {/* Canvas content */}
               <div className="flex flex-1 items-center justify-center p-8">
@@ -215,10 +210,6 @@ function PageContent() {
             </div>
           ) : (
             <div className="flex h-full flex-col bg-[#f5f3f0] animate-in fade-in zoom-in-95 duration-500">
-              {/* Workspace header with toggle */}
-              <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
-                <SidebarTrigger className="-ml-1" />
-              </header>
               {/* Workspace content */}
               <div className="flex flex-1 items-center justify-center p-8">
                 <div className="w-full max-w-3xl space-y-8">
