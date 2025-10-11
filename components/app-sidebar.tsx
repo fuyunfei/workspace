@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import type * as React from "react"
-import { MessageSquare, Sparkles, FileText, Gift, Trash2, HelpCircle, MessageCircle, Globe, Check } from "lucide-react"
+import { MessageSquare, Sparkles, FileText, Gift, HelpCircle, MessageCircle, Globe, Check } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavPages } from "@/components/nav-pages"
@@ -51,13 +51,6 @@ const data = {
       icon: Gift,
       isActive: false,
       requireAuth: false, // Public - triggers login when clicked
-    },
-    {
-      title: "Trash",
-      url: "#",
-      icon: Trash2,
-      isActive: false,
-      requireAuth: true, // Only show when logged in
     },
   ],
   recent: [
@@ -136,7 +129,12 @@ function UnifiedHeader({
             onClick={onPageOnClick}
             onMouseEnter={isInChatMode ? onPageOnHover : undefined}
             onMouseLeave={isInChatMode ? onPageOnLeave : undefined}
-            className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-muted-foreground"
+            className={`text-lg font-semibold transition-colors ${
+              isInChatMode
+                ? "cursor-pointer hover:text-primary"
+                : "cursor-default"
+            }`}
+            title={isInChatMode ? "Back to workspace" : undefined}
           >
             PageOn
           </button>

@@ -188,12 +188,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const deleteFolder = useCallback((id: string) => {
-    // Move all pages in this folder to root
-    setPages((prev) =>
-      prev.map((p) => (p.folderId === id ? { ...p, folderId: null } : p))
-    )
+    // Delete all pages in this folder
+    setPages((prev) => {
+      const pagesInFolder = prev.filter((p) => p.folderId === id)
+      // If selected page is in this folder, clear selection
+      if (pagesInFolder.some((p) => p.id === selectedPageId)) {
+        setSelectedPageId(null)
+      }
+      return prev.filter((p) => p.folderId !== id)
+    })
     setFolders((prev) => prev.filter((f) => f.id !== id))
-  }, [])
+  }, [selectedPageId])
 
   const renameFolder = useCallback((id: string, newName: string) => {
     setFolders((prev) =>

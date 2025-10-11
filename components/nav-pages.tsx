@@ -23,6 +23,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
@@ -38,7 +48,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useWorkspace, type Page, type Folder } from "@/hooks/use-workspace"
 import { useAuth } from "@/hooks/use-auth"
-import { RenameDialog } from "@/components/rename-dialog"
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,9 +60,16 @@ export function NavPages() {
   const { isMobile } = useSidebar()
   const [searchQuery, setSearchQuery] = useState("")
   const [isExpanded, setIsExpanded] = useState(false)
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
-  const [renameTarget, setRenameTarget] = useState<{ type: "page" | "folder"; id: string; name: string } | null>(null)
-  const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState("")
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    type: "page" | "folder"
+    id: string
+    name: string
+    pageCount?: number
+  } | null>(null)
 
   // Drag states
   const [isDragging, setIsDragging] = useState(false)
@@ -102,11 +118,8 @@ export function NavPages() {
   const handlePageAction = (action: string, page: Page) => {
     switch (action) {
       case "rename":
-        // 延迟打开对话框，让 DropdownMenu 有时间完全关闭
-        setTimeout(() => {
-          setRenameTarget({ type: "page", id: page.id, name: page.name })
-          setRenameDialogOpen(true)
-        }, 100)
+        setEditingId(page.id)
+        setEditingValue(page.name)
         break
       case "copy":
         const newPage = copyPage(page.id)
@@ -117,9 +130,12 @@ export function NavPages() {
         alert(`Share page: ${page.name}`)
         break
       case "delete":
-        if (confirm(`Delete "${page.name}"?`)) {
-          deletePage(page.id)
-        }
+        setDeleteDialog({
+          open: true,
+          type: "page",
+          id: page.id,
+          name: page.name,
+        })
         break
     }
   }
@@ -127,37 +143,81 @@ export function NavPages() {
   const handleFolderAction = (action: string, folder: Folder) => {
     switch (action) {
       case "rename":
-        // 延迟打开对话框，让 DropdownMenu 有时间完全关闭
-        setTimeout(() => {
-          setRenameTarget({ type: "folder", id: folder.id, name: folder.name })
-          setRenameDialogOpen(true)
-        }, 100)
+        setEditingId(folder.id)
+        setEditingValue(folder.name)
         break
       case "delete":
         const pagesInFolder = pages.filter((p) => p.folderId === folder.id)
-        const message = pagesInFolder.length > 0
-          ? `Delete "${folder.name}"? (${pagesInFolder.length} pages will be moved to root)`
-          : `Delete "${folder.name}"?`
-        if (confirm(message)) {
-          deleteFolder(folder.id)
-        }
+        setDeleteDialog({
+          open: true,
+          type: "folder",
+          id: folder.id,
+          name: folder.name,
+          pageCount: pagesInFolder.length,
+        })
         break
     }
   }
 
-  const handleRenameConfirm = (newName: string) => {
-    if (!renameTarget) return
-
-    if (renameTarget.type === "page") {
-      renamePage(renameTarget.id, newName)
-    } else {
-      renameFolder(renameTarget.id, newName)
+  const handleEditConfirm = () => {
+    if (!editingId || !editingValue.trim()) {
+      setEditingId(null)
+      setEditingValue("")
+      return
     }
-    setRenameTarget(null)
+
+    // Check if it's a page or folder
+    const isPage = pages.find((p) => p.id === editingId)
+    if (isPage) {
+      renamePage(editingId, editingValue.trim())
+    } else {
+      renameFolder(editingId, editingValue.trim())
+    }
+
+    setEditingId(null)
+    setEditingValue("")
   }
 
-  const handleCreateFolder = (name: string) => {
-    createFolder(name)
+  const handleEditCancel = () => {
+    setEditingId(null)
+    setEditingValue("")
+  }
+
+  const handleCreateFolder = () => {
+    setIsCreatingFolder(true)
+    setEditingValue("")
+  }
+
+  const handleNewFolderConfirm = () => {
+    if (!editingValue.trim()) {
+      setIsCreatingFolder(false)
+      setEditingValue("")
+      return
+    }
+    createFolder(editingValue.trim())
+    setIsCreatingFolder(false)
+    setEditingValue("")
+  }
+
+  const handleNewFolderCancel = () => {
+    setIsCreatingFolder(false)
+    setEditingValue("")
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!deleteDialog) return
+
+    if (deleteDialog.type === "page") {
+      deletePage(deleteDialog.id)
+    } else {
+      deleteFolder(deleteDialog.id)
+    }
+
+    setDeleteDialog(null)
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog(null)
   }
 
   const handleDragStart = (e: React.DragEvent, page: Page) => {
@@ -215,17 +275,37 @@ export function NavPages() {
 
   const renderPageItem = (page: Page, index: number = 0, isInFolder: boolean = false) => {
     const isBeingDragged = draggingPageId === page.id
+    const isEditing = editingId === page.id
 
     const content = (
       <>
-        <SidebarMenuButton
-          onClick={() => selectPage(page.id)}
-          isActive={selectedPageId === page.id}
-          className={isBeingDragged ? "opacity-50" : ""}
-        >
-          <span>{page.name}</span>
-        </SidebarMenuButton>
-        <DropdownMenu>
+        {isEditing ? (
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            <Input
+              value={editingValue}
+              onChange={(e) => setEditingValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleEditConfirm()
+                } else if (e.key === "Escape") {
+                  handleEditCancel()
+                }
+              }}
+              onBlur={handleEditConfirm}
+              autoFocus
+              className="h-7 text-sm"
+            />
+          </div>
+        ) : (
+          <>
+            <SidebarMenuButton
+              onClick={() => selectPage(page.id)}
+              isActive={selectedPageId === page.id}
+              className={isBeingDragged ? "opacity-50" : ""}
+            >
+              <span>{page.name}</span>
+            </SidebarMenuButton>
+            <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuAction showOnHover>
               <MoreHorizontal />
@@ -259,6 +339,8 @@ export function NavPages() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+          </>
+        )}
       </>
     )
 
@@ -267,7 +349,7 @@ export function NavPages() {
       return (
         <SidebarMenuSubItem
           key={page.id}
-          className="animate-in fade-in slide-in-from-left-2 duration-200"
+          className="animate-in fade-in slide-in-from-left-2 duration-200 group/menu-item"
           style={{ animationDelay: `${index * 30}ms` }}
           draggable
           onDragStart={(e) => handleDragStart(e, page)}
@@ -282,7 +364,7 @@ export function NavPages() {
     return (
       <SidebarMenuItem
         key={page.id}
-        className="animate-in fade-in slide-in-from-left-2 duration-200"
+        className="animate-in fade-in slide-in-from-left-2 duration-200 group/menu-item"
         style={{ animationDelay: `${index * 30}ms` }}
         draggable
         onDragStart={(e) => handleDragStart(e, page)}
@@ -303,9 +385,7 @@ export function NavPages() {
               variant="ghost"
               size="sm"
               className="h-auto p-1 hover:bg-transparent"
-              onClick={() => {
-                setNewFolderDialogOpen(true)
-              }}
+              onClick={handleCreateFolder}
               title="New Folder"
             >
               <FolderPlus className="h-4 w-4 text-muted-foreground" />
@@ -346,12 +426,37 @@ export function NavPages() {
           onDrop={handleDrop}
         >
           <SidebarMenu className="flex-1 p-2 min-h-[200px]">
+            {/* New Folder Creation */}
+            {isCreatingFolder && (
+              <SidebarMenuItem>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <FolderIcon className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleNewFolderConfirm()
+                      } else if (e.key === "Escape") {
+                        handleNewFolderCancel()
+                      }
+                    }}
+                    onBlur={handleNewFolderConfirm}
+                    placeholder="Folder name"
+                    autoFocus
+                    className="h-7 text-sm"
+                  />
+                </div>
+              </SidebarMenuItem>
+            )}
+
             {/* Folders */}
             {folders.map((folder) => {
               const folderPages = getPagesByFolder(folder.id)
               if (searchQuery && folderPages.length === 0) return null
 
               const isFolderHovered = dragOverTarget === `folder-${folder.id}`
+              const isEditingFolder = editingId === folder.id
 
               return (
                 <Collapsible
@@ -371,25 +476,45 @@ export function NavPages() {
                     }`}
                   >
                     <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className={isFolderHovered ? "scale-[1.02]" : ""}>
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform ${
-                              folder.isExpanded ? "rotate-90" : ""
-                            }`}
+                      {isEditingFolder ? (
+                        <div className="flex items-center gap-2 px-2 py-1.5">
+                          <FolderIcon className="h-4 w-4 text-muted-foreground" />
+                          <Input
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleEditConfirm()
+                              } else if (e.key === "Escape") {
+                                handleEditCancel()
+                              }
+                            }}
+                            onBlur={handleEditConfirm}
+                            autoFocus
+                            className="h-7 text-sm flex-1"
                           />
-                          {folder.isExpanded ? (
-                            <FolderOpen className="h-4 w-4" />
-                          ) : (
-                            <FolderIcon className="h-4 w-4" />
-                          )}
-                          <span>{folder.name}</span>
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {folderPages.length}
-                          </span>
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <DropdownMenu>
+                        </div>
+                      ) : (
+                        <>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton className={isFolderHovered ? "scale-[1.02]" : ""}>
+                              <ChevronRight
+                                className={`h-4 w-4 transition-transform ${
+                                  folder.isExpanded ? "rotate-90" : ""
+                                }`}
+                              />
+                              {folder.isExpanded ? (
+                                <FolderOpen className="h-4 w-4" />
+                              ) : (
+                                <FolderIcon className="h-4 w-4" />
+                              )}
+                              <span>{folder.name}</span>
+                              <span className="ml-auto text-xs text-muted-foreground">
+                                {folderPages.length}
+                              </span>
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <SidebarMenuAction showOnHover>
                             <MoreHorizontal />
@@ -415,6 +540,8 @@ export function NavPages() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                        </>
+                      )}
                     </SidebarMenuItem>
                     <CollapsibleContent>
                       <SidebarMenuSub>
@@ -432,24 +559,45 @@ export function NavPages() {
         </div>
       </SidebarGroup>
 
-      {/* Rename Dialog */}
-      <RenameDialog
-        open={renameDialogOpen}
-        onOpenChange={setRenameDialogOpen}
-        title={renameTarget?.type === "folder" ? "Rename Folder" : "Rename Page"}
-        currentName={renameTarget?.name || ""}
-        onConfirm={handleRenameConfirm}
-      />
-
-      {/* New Folder Dialog */}
-      <RenameDialog
-        open={newFolderDialogOpen}
-        onOpenChange={setNewFolderDialogOpen}
-        title="New Folder"
-        description="Create a new folder to organize your pages"
-        currentName=""
-        onConfirm={handleCreateFolder}
-      />
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog?.open} onOpenChange={(open) => !open && handleDeleteCancel()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteDialog?.type === "page" ? "Delete Page" : "Delete Folder"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog?.type === "page" ? (
+                <>
+                  Permanently delete <strong>{deleteDialog.name}</strong>?
+                  <br /><br />
+                  This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  Permanently delete folder <strong>{deleteDialog?.name}</strong>
+                  {deleteDialog?.pageCount && deleteDialog.pageCount > 0 ? (
+                    <>
+                      {" "}and all <strong>{deleteDialog.pageCount}</strong> page{deleteDialog.pageCount > 1 ? "s" : ""} inside
+                    </>
+                  ) : null}?
+                  <br /><br />
+                  This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
