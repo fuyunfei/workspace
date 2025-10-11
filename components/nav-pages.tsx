@@ -11,7 +11,7 @@ import {
   Trash2,
   FolderPlus,
   ChevronRight,
-  Folder,
+  Folder as FolderIcon,
   FolderOpen,
 } from "lucide-react"
 
@@ -381,7 +381,7 @@ export function NavPages() {
                           {folder.isExpanded ? (
                             <FolderOpen className="h-4 w-4" />
                           ) : (
-                            <Folder className="h-4 w-4" />
+                            <FolderIcon className="h-4 w-4" />
                           )}
                           <span>{folder.name}</span>
                           <span className="ml-auto text-xs text-muted-foreground">
