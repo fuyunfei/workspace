@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import {
   Palette,
   Plus,
@@ -93,7 +93,7 @@ function PageContent() {
   const [inputValue, setInputValue] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [selectedModel, setSelectedModel] = useState("sonnet-3.5")
-  const { setOpen } = useSidebar()
+  const { setOpen, open } = useSidebar()
   const { requireAuth, requirePro, isPro } = useAuth()
   const { selectedPageId, selectPage, createPage, pages } = useWorkspace()
 
@@ -195,7 +195,10 @@ function PageContent() {
             <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
               {/* Canvas header with project name */}
               <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
-                <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
+                <div className="flex items-center gap-2">
+                  {!open && <SidebarTrigger className="-ml-1" />}
+                  <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
+                </div>
               </header>
               {/* Canvas content */}
               <div className="flex flex-1 items-center justify-center p-8">

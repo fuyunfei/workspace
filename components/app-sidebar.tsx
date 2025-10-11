@@ -117,10 +117,12 @@ const data = {
 function UnifiedHeader({
   onPageOnClick,
   onPageOnHover,
+  onPageOnLeave,
   isInChatMode = false,
 }: {
   onPageOnClick?: () => void
   onPageOnHover?: () => void
+  onPageOnLeave?: () => void
   isInChatMode?: boolean
 }) {
   const { state, toggleSidebar } = useSidebar()
@@ -133,6 +135,7 @@ function UnifiedHeader({
           <button
             onClick={onPageOnClick}
             onMouseEnter={isInChatMode ? onPageOnHover : undefined}
+            onMouseLeave={isInChatMode ? onPageOnLeave : undefined}
             className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-muted-foreground"
           >
             PageOn
@@ -238,6 +241,29 @@ export function AppSidebar({
     setShowWorkspace(true)
   }
 
+  const handlePageOnLeave = () => {
+    // Start hiding workspace when mouse leaves PageOn button
+    hoverTimeoutRef.current = setTimeout(() => {
+      setShowWorkspace(false)
+    }, 100)
+  }
+
+  const handleWorkspaceMouseEnter = () => {
+    // Clear timeout when mouse enters workspace content
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+  }
+
+  const handleWorkspaceMouseLeave = () => {
+    // Start hiding when mouse leaves workspace content
+    if (!selectedPageId) return
+    hoverTimeoutRef.current = setTimeout(() => {
+      setShowWorkspace(false)
+    }, 100)
+  }
+
   const handleSidebarMouseEnter = () => {
     if (!selectedPageId) return
     // Only clear timeout, don't actively show workspace
@@ -328,14 +354,19 @@ export function AppSidebar({
       <UnifiedHeader
         onPageOnClick={() => handleNavMainSelect("AI Create")}
         onPageOnHover={handlePageOnHover}
+        onPageOnLeave={handlePageOnLeave}
         isInChatMode={!!selectedPageId}
       />
       <SidebarContent className="animate-in fade-in slide-in-from-left-4 duration-300">
         {showWorkspaceContent ? (
-          <>
+          <div
+            onMouseEnter={selectedPageId ? handleWorkspaceMouseEnter : undefined}
+            onMouseLeave={selectedPageId ? handleWorkspaceMouseLeave : undefined}
+            className="h-full"
+          >
             <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
             <NavPages />
-          </>
+          </div>
         ) : (
           <SidebarChatView conversationName={selectedPageId!} />
         )}
