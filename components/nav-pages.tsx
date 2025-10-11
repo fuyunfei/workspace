@@ -421,11 +421,15 @@ export function NavPages() {
         </div>
 
         <div
-          className="flex-1 min-h-0"
+          className={`flex-1 min-h-[400px] rounded-md transition-all duration-200 ${
+            dragOverTarget === "root" && isDragging
+              ? "bg-accent/50 ring-2 ring-primary/30"
+              : ""
+          }`}
           onDragOver={handleRootDragOver}
           onDrop={handleDrop}
         >
-          <SidebarMenu className="flex-1 p-2 min-h-[200px]">
+          <SidebarMenu className="flex-1 p-2 min-h-[300px]">
             {/* New Folder Creation */}
             {isCreatingFolder && (
               <SidebarMenuItem>
