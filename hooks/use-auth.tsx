@@ -85,7 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requireAuth = useCallback((action?: () => void): boolean => {
     if (!isAuthenticated) {
-      setShowLoginDialog(true)
+      // 延迟打开对话框，让 DropdownMenu 有时间完全关闭
+      setTimeout(() => {
+        setShowLoginDialog(true)
+      }, 100)
       return false
     }
     // 如果已登录，执行传入的操作
@@ -102,7 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // 再检查是否是 Pro 用户
     if (!isPro) {
-      setShowUpgradeDialog(true)
+      // 延迟打开对话框，让 DropdownMenu 有时间完全关闭
+      setTimeout(() => {
+        setShowUpgradeDialog(true)
+      }, 100)
       return false
     }
     return true
