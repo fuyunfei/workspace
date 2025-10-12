@@ -344,9 +344,14 @@ export function AppSidebar({
 
   // Determine what content to show
   // In Canvas mode: show SidebarChatView
-  // Otherwise: show workspace
+  // Otherwise: show workspace (or workspace on hover in chat mode)
   const isCanvasMode = selectedPage && selectedPage.canvasOpen && selectedPage.artifacts.length > 0
-  const showWorkspaceContent = !selectedPageId || !isCanvasMode || showWorkspace
+
+  // Show workspace when:
+  // 1. No page selected, OR
+  // 2. In canvas mode but showing workspace on hover, OR
+  // 3. Not in canvas mode (full-screen chat mode)
+  const showWorkspaceContent = !selectedPageId || (!isCanvasMode) || (isCanvasMode && showWorkspace)
 
   return (
     <Sidebar
@@ -372,7 +377,7 @@ export function AppSidebar({
             <NavPages />
           </div>
         ) : (
-          <SidebarChatView conversationName={selectedPageId!} />
+          <SidebarChatView page={selectedPage!} />
         )}
       </SidebarContent>
       {showWorkspaceContent && (
