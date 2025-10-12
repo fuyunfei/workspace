@@ -3,6 +3,20 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react"
 import { MessageSquare, type LucideIcon } from "lucide-react"
 
+export type Message = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
+}
+
+export type Artifact = {
+  id: string
+  title: string
+  color: string
+  createdAt: Date
+}
+
 export type Page = {
   id: string
   name: string
@@ -10,6 +24,9 @@ export type Page = {
   folderId: string | null
   createdAt: Date
   updatedAt: Date
+  messages: Message[]
+  artifacts: Artifact[]
+  canvasOpen: boolean
 }
 
 export type Folder = {
@@ -25,12 +42,21 @@ type WorkspaceContextType = {
   selectedPageId: string | null
 
   // Page operations
-  createPage: (name: string, folderId?: string | null) => Page
+  createPage: (name: string, folderId?: string | null, initialMessage?: string) => Page
   deletePage: (id: string) => void
   renamePage: (id: string, newName: string) => void
   copyPage: (id: string) => Page
   movePage: (pageId: string, folderId: string | null) => void
   selectPage: (id: string | null) => void
+
+  // Message operations
+  addMessage: (pageId: string, message: Omit<Message, "id" | "timestamp">) => void
+
+  // Artifact operations
+  addArtifact: (pageId: string, artifact: Omit<Artifact, "id" | "createdAt">) => void
+
+  // Canvas operations
+  setCanvasOpen: (pageId: string, open: boolean) => void
 
   // Folder operations
   createFolder: (name: string) => Folder
@@ -53,6 +79,9 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-15"),
     updatedAt: new Date("2024-01-15"),
+    messages: [],
+    artifacts: [],
+    canvasOpen: false,
   },
   {
     id: "2",
@@ -61,6 +90,9 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-14"),
     updatedAt: new Date("2024-01-14"),
+    messages: [],
+    artifacts: [],
+    canvasOpen: false,
   },
   {
     id: "3",
@@ -69,6 +101,9 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-13"),
     updatedAt: new Date("2024-01-13"),
+    messages: [],
+    artifacts: [],
+    canvasOpen: false,
   },
 ]
 
@@ -86,8 +121,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       if (storedPages) {
         const parsed = JSON.parse(storedPages)
-        // Restore icon reference (can't be serialized)
-        setPages(parsed.map((p: any) => ({ ...p, icon: MessageSquare, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) })))
+        // Restore icon reference (can't be serialized) and ensure new fields exist
+        setPages(parsed.map((p: any) => ({
+          ...p,
+          icon: MessageSquare,
+          createdAt: new Date(p.createdAt),
+          updatedAt: new Date(p.updatedAt),
+          messages: p.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) || [],
+          artifacts: p.artifacts?.map((a: any) => ({ ...a, createdAt: new Date(a.createdAt) })) || [],
+          canvasOpen: p.canvasOpen || false,
+        })))
       } else {
         setPages(initialPages)
       }
@@ -124,7 +167,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [folders, isInitialized])
 
   // Page operations
-  const createPage = useCallback((name: string, folderId: string | null = null): Page => {
+  const createPage = useCallback((name: string, folderId: string | null = null, initialMessage?: string): Page => {
+    const messages: Message[] = initialMessage ? [{
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: initialMessage,
+      timestamp: new Date(),
+    }] : []
+
     const newPage: Page = {
       id: `page-${Date.now()}`,
       name,
@@ -132,6 +182,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       folderId,
       createdAt: new Date(),
       updatedAt: new Date(),
+      messages,
+      artifacts: [],
+      canvasOpen: false,
     }
     setPages((prev) => [newPage, ...prev])
     return newPage
@@ -173,6 +226,55 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const selectPage = useCallback((id: string | null) => {
     setSelectedPageId(id)
+  }, [])
+
+  // Message operations
+  const addMessage = useCallback((pageId: string, message: Omit<Message, "id" | "timestamp">) => {
+    setPages((prev) =>
+      prev.map((p) => {
+        if (p.id === pageId) {
+          const newMessage: Message = {
+            ...message,
+            id: `msg-${Date.now()}`,
+            timestamp: new Date(),
+          }
+          return {
+            ...p,
+            messages: [...p.messages, newMessage],
+            updatedAt: new Date(),
+          }
+        }
+        return p
+      })
+    )
+  }, [])
+
+  // Artifact operations
+  const addArtifact = useCallback((pageId: string, artifact: Omit<Artifact, "id" | "createdAt">) => {
+    setPages((prev) =>
+      prev.map((p) => {
+        if (p.id === pageId) {
+          const newArtifact: Artifact = {
+            ...artifact,
+            id: `artifact-${Date.now()}`,
+            createdAt: new Date(),
+          }
+          return {
+            ...p,
+            artifacts: [...p.artifacts, newArtifact],
+            updatedAt: new Date(),
+          }
+        }
+        return p
+      })
+    )
+  }, [])
+
+  // Canvas operations
+  const setCanvasOpen = useCallback((pageId: string, open: boolean) => {
+    setPages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, canvasOpen: open } : p))
+    )
   }, [])
 
   // Folder operations
@@ -224,6 +326,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         copyPage,
         movePage,
         selectPage,
+        addMessage,
+        addArtifact,
+        setCanvasOpen,
         createFolder,
         deleteFolder,
         renameFolder,

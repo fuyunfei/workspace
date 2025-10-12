@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { ChatView } from "@/components/chat-view"
+import { CanvasView } from "@/components/canvas-view"
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import {
   Palette,
@@ -164,7 +166,8 @@ function PageContent() {
 
       // Create page with title based on input or use case
       const pageTitle = inputValue.slice(0, 50) || useCaseTitle || "Untitled"
-      const newPage = createPage(pageTitle)
+      const userMessage = inputValue.trim()
+      const newPage = createPage(pageTitle, null, userMessage)
       selectPage(newPage.id)
 
       // Reset form
@@ -186,31 +189,19 @@ function PageContent() {
     ? useCases.find((uc) => uc.id === selectedUseCase)?.prompt || "How can I help you today?"
     : "How can I help you today?"
 
+  // Determine which view to show
+  const showFullScreenChat = selectedPage && (!selectedPage.canvasOpen || selectedPage.artifacts.length === 0)
+  const showCanvas = selectedPage && selectedPage.canvasOpen && selectedPage.artifacts.length > 0
+
   return (
     <>
       <AppSidebar />
       <SidebarInset className="relative">
         <div className="h-screen">
-          {selectedPage ? (
-            <div className="flex h-full flex-col bg-muted/20 animate-in fade-in zoom-in-95 duration-500">
-              {/* Canvas header with project name */}
-              <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
-                <div className="flex items-center gap-2">
-                  {!open && <SidebarTrigger className="-ml-1" />}
-                  <h1 className="text-sm font-semibold">{selectedPage.name}</h1>
-                </div>
-              </header>
-              {/* Canvas content */}
-              <div className="flex flex-1 items-center justify-center p-8">
-                <div className="flex h-full w-full max-w-4xl items-center justify-center rounded-lg border-2 border-dashed bg-background">
-                  <div className="text-center text-muted-foreground">
-                    <Palette className="mx-auto mb-4 h-12 w-12" />
-                    <p className="text-lg font-medium">Design Canvas</p>
-                    <p className="mt-1 text-sm">AI-generated designs will appear here</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {showFullScreenChat ? (
+            <ChatView page={selectedPage} />
+          ) : showCanvas ? (
+            <CanvasView page={selectedPage} />
           ) : (
             <div className="flex h-full flex-col bg-[#f5f3f0] animate-in fade-in zoom-in-95 duration-500">
               {/* Workspace content */}

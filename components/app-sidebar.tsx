@@ -199,9 +199,12 @@ export function AppSidebar({
   const [showWorkspace, setShowWorkspace] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState("en")
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const { selectedPageId, selectPage } = useWorkspace()
+  const { selectedPageId, selectPage, pages } = useWorkspace()
   const { requireAuth } = useAuth()
   const { isMobile } = useSidebar()
+
+  // Get selected page data
+  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) : null
 
   const handleNavMainSelect = (title: string) => {
     if (title === "AI Create") {
@@ -340,7 +343,10 @@ export function AppSidebar({
   }, [showWorkspace, selectedPageId])
 
   // Determine what content to show
-  const showWorkspaceContent = !selectedPageId || showWorkspace
+  // In Canvas mode: show SidebarChatView
+  // Otherwise: show workspace
+  const isCanvasMode = selectedPage && selectedPage.canvasOpen && selectedPage.artifacts.length > 0
+  const showWorkspaceContent = !selectedPageId || !isCanvasMode || showWorkspace
 
   return (
     <Sidebar
