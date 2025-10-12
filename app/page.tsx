@@ -189,20 +189,31 @@ function PageContent() {
     ? useCases.find((uc) => uc.id === selectedUseCase)?.prompt || "How can I help you today?"
     : "How can I help you today?"
 
-  // Determine which view to show
-  const showFullScreenChat = selectedPage && (!selectedPage.canvasOpen || selectedPage.artifacts.length === 0)
-  const showCanvas = selectedPage && selectedPage.canvasOpen && selectedPage.artifacts.length > 0
+  // Determine canvas state
+  const isInChatMode = selectedPage && selectedPage.messages.length > 0
+  const canvasOpen = selectedPage && selectedPage.canvasOpen && selectedPage.artifacts.length > 0
 
   return (
     <>
       <AppSidebar />
       <SidebarInset className="relative">
         <div className="h-screen">
-          {showFullScreenChat ? (
-            <ChatView page={selectedPage} />
-          ) : showCanvas ? (
-            <CanvasView page={selectedPage} />
+          {isInChatMode ? (
+            // Chat mode: Show chat that can expand/collapse based on canvas
+            <div className="flex h-full">
+              {/* Chat area - full width when no canvas, left side when canvas open */}
+              <div className={`transition-all duration-300 ${canvasOpen ? 'w-96 border-r' : 'flex-1'}`}>
+                <ChatView page={selectedPage} />
+              </div>
+              {/* Canvas area - only shown when canvas is open */}
+              {canvasOpen && (
+                <div className="flex-1">
+                  <CanvasView page={selectedPage} />
+                </div>
+              )}
+            </div>
           ) : (
+            // Home page
             <div className="flex h-full flex-col bg-[#f5f3f0] animate-in fade-in zoom-in-95 duration-500">
               {/* Workspace content */}
               <div className="flex flex-1 items-center justify-center p-8">

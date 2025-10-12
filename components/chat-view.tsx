@@ -114,7 +114,7 @@ export function ChatView({ page }: ChatViewProps) {
     <div className="flex h-full flex-col bg-background">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 py-8">
+        <div className="mx-auto w-full max-w-3xl px-4 py-8">
           {page.messages.map((message) => (
             <div
               key={message.id}
@@ -151,7 +151,7 @@ export function ChatView({ page }: ChatViewProps) {
 
       {/* Input area */}
       <div className="border-t bg-background">
-        <div className="mx-auto max-w-3xl px-4 py-4">
+        <div className="mx-auto w-full max-w-3xl px-4 py-4">
           <div className="flex items-center gap-2 rounded-2xl border bg-background px-4 py-2">
             <Input
               value={inputValue}
