@@ -3,19 +3,14 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react"
 import { MessageSquare, type LucideIcon } from "lucide-react"
 
-export type Message = {
+export type ChatMessage = {
   id: string
   role: "user" | "assistant"
   content: string
   timestamp: Date
 }
 
-export type Artifact = {
-  id: string
-  title: string
-  color: string
-  createdAt: Date
-}
+export type ChatMode = "fullscreen" | "canvas"
 
 export type Page = {
   id: string
@@ -24,9 +19,9 @@ export type Page = {
   folderId: string | null
   createdAt: Date
   updatedAt: Date
-  messages: Message[]
-  artifacts: Artifact[]
-  canvasOpen: boolean
+  // Chat-related fields
+  chatMessages: ChatMessage[]
+  chatMode: ChatMode
 }
 
 export type Folder = {
@@ -42,27 +37,28 @@ type WorkspaceContextType = {
   selectedPageId: string | null
 
   // Page operations
-  createPage: (name: string, folderId?: string | null, initialMessage?: string) => Page
+  createPage: (name: string, folderId?: string | null) => Page
   deletePage: (id: string) => void
   renamePage: (id: string, newName: string) => void
   copyPage: (id: string) => Page
   movePage: (pageId: string, folderId: string | null) => void
   selectPage: (id: string | null) => void
 
-  // Message operations
-  addMessage: (pageId: string, message: Omit<Message, "id" | "timestamp">) => void
-
-  // Artifact operations
-  addArtifact: (pageId: string, artifact: Omit<Artifact, "id" | "createdAt">) => void
-
-  // Canvas operations
-  setCanvasOpen: (pageId: string, open: boolean) => void
-
   // Folder operations
   createFolder: (name: string) => Folder
   deleteFolder: (id: string) => void
   renameFolder: (id: string, newName: string) => void
   toggleFolder: (id: string) => void
+
+  // Chat operations
+  addChatMessage: (pageId: string, message: Omit<ChatMessage, "id" | "timestamp">) => void
+  updateChatMode: (pageId: string, mode: ChatMode) => void
+  getChatMessages: (pageId: string) => ChatMessage[]
+  getChatMode: (pageId: string) => ChatMode
+
+  // Sidebar width (shared between workspace and chat panel)
+  sidebarWidth: number
+  setSidebarWidth: (width: number) => void
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined)
@@ -79,9 +75,8 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-15"),
     updatedAt: new Date("2024-01-15"),
-    messages: [],
-    artifacts: [],
-    canvasOpen: false,
+    chatMessages: [],
+    chatMode: "fullscreen",
   },
   {
     id: "2",
@@ -90,9 +85,8 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-14"),
     updatedAt: new Date("2024-01-14"),
-    messages: [],
-    artifacts: [],
-    canvasOpen: false,
+    chatMessages: [],
+    chatMode: "fullscreen",
   },
   {
     id: "3",
@@ -101,17 +95,21 @@ const initialPages: Page[] = [
     folderId: null,
     createdAt: new Date("2024-01-13"),
     updatedAt: new Date("2024-01-13"),
-    messages: [],
-    artifacts: [],
-    canvasOpen: false,
+    chatMessages: [],
+    chatMode: "fullscreen",
   },
 ]
+
+const SIDEBAR_WIDTH_MIN = 12 // rem
+const SIDEBAR_WIDTH_MAX = 30 // rem
+const SIDEBAR_WIDTH_DEFAULT = 16 // rem
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [pages, setPages] = useState<Page[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [sidebarWidth, setSidebarWidthState] = useState(SIDEBAR_WIDTH_DEFAULT)
 
   // Initialize from localStorage
   useEffect(() => {
@@ -121,15 +119,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       if (storedPages) {
         const parsed = JSON.parse(storedPages)
-        // Restore icon reference (can't be serialized) and ensure new fields exist
+        // Restore icon reference and migrate old data
         setPages(parsed.map((p: any) => ({
           ...p,
           icon: MessageSquare,
           createdAt: new Date(p.createdAt),
           updatedAt: new Date(p.updatedAt),
-          messages: p.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) || [],
-          artifacts: p.artifacts?.map((a: any) => ({ ...a, createdAt: new Date(a.createdAt) })) || [],
-          canvasOpen: p.canvasOpen || false,
+          // Migrate old pages without chat fields
+          chatMessages: p.chatMessages || [],
+          chatMode: p.chatMode || "fullscreen",
         })))
       } else {
         setPages(initialPages)
@@ -167,14 +165,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [folders, isInitialized])
 
   // Page operations
-  const createPage = useCallback((name: string, folderId: string | null = null, initialMessage?: string): Page => {
-    const messages: Message[] = initialMessage ? [{
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content: initialMessage,
-      timestamp: new Date(),
-    }] : []
-
+  const createPage = useCallback((name: string, folderId: string | null = null): Page => {
     const newPage: Page = {
       id: `page-${Date.now()}`,
       name,
@@ -182,9 +173,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       folderId,
       createdAt: new Date(),
       updatedAt: new Date(),
-      messages,
-      artifacts: [],
-      canvasOpen: false,
+      chatMessages: [],
+      chatMode: "fullscreen",
     }
     setPages((prev) => [newPage, ...prev])
     return newPage
@@ -213,6 +203,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       name: `${page.name} (Copy)`,
       createdAt: new Date(),
       updatedAt: new Date(),
+      // Reset chat for copied page
+      chatMessages: [],
+      chatMode: "fullscreen",
     }
     setPages((prev) => [newPage, ...prev])
     return newPage
@@ -226,55 +219,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const selectPage = useCallback((id: string | null) => {
     setSelectedPageId(id)
-  }, [])
-
-  // Message operations
-  const addMessage = useCallback((pageId: string, message: Omit<Message, "id" | "timestamp">) => {
-    setPages((prev) =>
-      prev.map((p) => {
-        if (p.id === pageId) {
-          const newMessage: Message = {
-            ...message,
-            id: `msg-${Date.now()}`,
-            timestamp: new Date(),
-          }
-          return {
-            ...p,
-            messages: [...p.messages, newMessage],
-            updatedAt: new Date(),
-          }
-        }
-        return p
-      })
-    )
-  }, [])
-
-  // Artifact operations
-  const addArtifact = useCallback((pageId: string, artifact: Omit<Artifact, "id" | "createdAt">) => {
-    setPages((prev) =>
-      prev.map((p) => {
-        if (p.id === pageId) {
-          const newArtifact: Artifact = {
-            ...artifact,
-            id: `artifact-${Date.now()}`,
-            createdAt: new Date(),
-          }
-          return {
-            ...p,
-            artifacts: [...p.artifacts, newArtifact],
-            updatedAt: new Date(),
-          }
-        }
-        return p
-      })
-    )
-  }, [])
-
-  // Canvas operations
-  const setCanvasOpen = useCallback((pageId: string, open: boolean) => {
-    setPages((prev) =>
-      prev.map((p) => (p.id === pageId ? { ...p, canvasOpen: open } : p))
-    )
   }, [])
 
   // Folder operations
@@ -314,6 +258,62 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  // Chat operations
+  const addChatMessage = useCallback((pageId: string, message: Omit<ChatMessage, "id" | "timestamp">) => {
+    setPages((prev) =>
+      prev.map((page) => {
+        if (page.id !== pageId) return page
+
+        const newMessage: ChatMessage = {
+          ...message,
+          id: `msg-${Date.now()}-${Math.random()}`,
+          timestamp: new Date(),
+        }
+        const newMessages = [...page.chatMessages, newMessage]
+
+        // Auto-switch to canvas mode on 3rd AI response
+        const aiMessageCount = newMessages.filter((m) => m.role === "assistant").length
+        const shouldSwitchToCanvas = aiMessageCount === 3 && page.chatMode === "fullscreen"
+
+        return {
+          ...page,
+          chatMessages: newMessages,
+          chatMode: shouldSwitchToCanvas ? "canvas" : page.chatMode,
+          updatedAt: new Date(),
+        }
+      })
+    )
+  }, [])
+
+  const updateChatMode = useCallback((pageId: string, mode: ChatMode) => {
+    setPages((prev) =>
+      prev.map((page) =>
+        page.id === pageId ? { ...page, chatMode: mode, updatedAt: new Date() } : page
+      )
+    )
+  }, [])
+
+  const getChatMessages = useCallback(
+    (pageId: string): ChatMessage[] => {
+      const page = pages.find((p) => p.id === pageId)
+      return page?.chatMessages || []
+    },
+    [pages]
+  )
+
+  const getChatMode = useCallback(
+    (pageId: string): ChatMode => {
+      const page = pages.find((p) => p.id === pageId)
+      return page?.chatMode || "fullscreen"
+    },
+    [pages]
+  )
+
+  const setSidebarWidth = useCallback((width: number) => {
+    const clampedWidth = Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX)
+    setSidebarWidthState(clampedWidth)
+  }, [])
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -326,13 +326,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         copyPage,
         movePage,
         selectPage,
-        addMessage,
-        addArtifact,
-        setCanvasOpen,
         createFolder,
         deleteFolder,
         renameFolder,
         toggleFolder,
+        addChatMessage,
+        updateChatMode,
+        getChatMessages,
+        getChatMode,
+        sidebarWidth,
+        setSidebarWidth,
       }}
     >
       {children}

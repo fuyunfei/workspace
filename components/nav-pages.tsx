@@ -57,7 +57,7 @@ import {
 const INITIAL_DISPLAY_COUNT = 5
 
 export function NavPages() {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpen } = useSidebar()
   const [searchQuery, setSearchQuery] = useState("")
   const [isExpanded, setIsExpanded] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -90,6 +90,7 @@ export function NavPages() {
     deleteFolder,
     renameFolder,
     toggleFolder,
+    getChatMode,
   } = useWorkspace()
 
   // Import useAuth to check login status
@@ -220,6 +221,13 @@ export function NavPages() {
     setDeleteDialog(null)
   }
 
+  const handlePageClick = (pageId: string) => {
+    selectPage(pageId)
+
+    // Close sidebar after page selection
+    setOpen(false)
+  }
+
   const handleDragStart = (e: React.DragEvent, page: Page) => {
     e.dataTransfer.effectAllowed = "move"
     e.dataTransfer.setData("pageId", page.id)
@@ -299,7 +307,7 @@ export function NavPages() {
         ) : (
           <>
             <SidebarMenuButton
-              onClick={() => selectPage(page.id)}
+              onClick={() => handlePageClick(page.id)}
               isActive={selectedPageId === page.id}
               className={isBeingDragged ? "opacity-50" : ""}
             >

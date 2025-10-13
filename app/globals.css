@@ -125,4 +125,24 @@
   [data-slot="sidebar-wrapper"][style*="--resizing"] [data-slot="sidebar-container"] {
     transition: none !important;
   }
+
+  /* Hide scrollbars for workspace sidebar */
+  [data-sidebar="content"] {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  [data-sidebar="content"]::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Hide scrollbars for chat panel messages area */
+  .chat-messages-scroll {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .chat-messages-scroll::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
 }

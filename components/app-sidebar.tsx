@@ -1,15 +1,14 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import type * as React from "react"
-import { MessageSquare, Sparkles, FileText, Gift, HelpCircle, MessageCircle, Globe, Check } from "lucide-react"
+import * as React from "react"
+import { useState } from "react"
+import { Sparkles, FileText, Gift, HelpCircle, MessageCircle, Globe, Check } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavPages } from "@/components/nav-pages"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useAuth } from "@/hooks/use-auth"
 import { NavUser } from "@/components/nav-user"
-import { SidebarChatView } from "@/components/sidebar-chat-view"
 import {
   Sidebar,
   SidebarContent,
@@ -22,101 +21,47 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "AI Create",
-      url: "#",
-      icon: Sparkles,
-      isActive: false,
-      requireAuth: false, // Public - triggers login when clicked
-    },
-    {
-      title: "New Blank Slide",
-      url: "#",
-      icon: FileText,
-      isActive: false,
-      requireAuth: false, // Public - triggers login when clicked
-    },
-    {
-      title: "Refer & Earn",
-      url: "#",
-      icon: Gift,
-      isActive: false,
-      requireAuth: false, // Public - triggers login when clicked
-    },
-  ],
-  recent: [
-    {
-      name: "Landing Page Design",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Dashboard UI Mockup",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Mobile App Wireframe",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "E-commerce Product Page",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Social Media Feed",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Admin Panel Layout",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Portfolio Website",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Login & Signup Forms",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Blog Post Template",
-      url: "#",
-      icon: MessageSquare,
-    },
-    {
-      name: "Pricing Page Design",
-      url: "#",
-      icon: MessageSquare,
-    },
-  ],
-}
+// Nav main items data
+const navMainItems = [
+  {
+    title: "AI Create",
+    url: "#",
+    icon: Sparkles,
+    isActive: false,
+    requireAuth: false,
+  },
+  {
+    title: "New Blank Slide",
+    url: "#",
+    icon: FileText,
+    isActive: false,
+    requireAuth: false,
+  },
+  {
+    title: "Refer & Earn",
+    url: "#",
+    icon: Gift,
+    isActive: false,
+    requireAuth: false,
+  },
+]
 
-function UnifiedHeader({
-  onPageOnClick,
-  onPageOnHover,
-  onPageOnLeave,
-  isInChatMode = false,
+function WorkspaceHeader({
+  onCreateNew
 }: {
-  onPageOnClick?: () => void
-  onPageOnHover?: () => void
-  onPageOnLeave?: () => void
-  isInChatMode?: boolean
+  onCreateNew: () => void
 }) {
   const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === "collapsed"
@@ -125,19 +70,19 @@ function UnifiedHeader({
     <SidebarHeader className="flex h-12 shrink-0 flex-row items-center gap-2 border-b px-4">
       {!isCollapsed ? (
         <>
-          <button
-            onClick={onPageOnClick}
-            onMouseEnter={isInChatMode ? onPageOnHover : undefined}
-            onMouseLeave={isInChatMode ? onPageOnLeave : undefined}
-            className={`text-lg font-semibold transition-colors ${
-              isInChatMode
-                ? "cursor-pointer hover:text-primary"
-                : "cursor-default"
-            }`}
-            title={isInChatMode ? "Back to workspace" : undefined}
-          >
-            PageOn
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onCreateNew}
+                className="text-lg font-semibold transition-colors hover:text-primary cursor-pointer"
+              >
+                PageOn
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              Create new
+            </TooltipContent>
+          </Tooltip>
           <button
             onClick={toggleSidebar}
             className="ml-auto flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
@@ -196,15 +141,20 @@ const languages = [
 export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
-  const [showWorkspace, setShowWorkspace] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState("en")
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const { selectedPageId, selectPage, pages } = useWorkspace()
+  const { selectPage, selectedPageId, getChatMode, sidebarWidth: workspaceSidebarWidth } = useWorkspace()
   const { requireAuth } = useAuth()
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpen, setSidebarWidth: setSidebarContextWidth } = useSidebar()
 
-  // Get selected page data
-  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) : null
+  // Sync workspace sidebar width from workspace context (one-way: workspace -> sidebar)
+  React.useEffect(() => {
+    setSidebarContextWidth(workspaceSidebarWidth)
+  }, [workspaceSidebarWidth, setSidebarContextWidth])
+
+  // Determine collapsible mode based on chat state
+  const chatMode = selectedPageId ? getChatMode(selectedPageId) : null
+  const isInCanvasMode = selectedPageId && chatMode === "canvas"
+  const collapsibleMode = isInCanvasMode ? "offcanvas" : "icon"
 
   const handleNavMainSelect = (title: string) => {
     if (title === "AI Create") {
@@ -214,7 +164,6 @@ export function AppSidebar({
       }
       // Return to main workspace page
       selectPage(null)
-      setShowWorkspace(false)
     } else if (title === "New Blank Slide") {
       // Require login before creating
       if (!requireAuth()) {
@@ -222,7 +171,6 @@ export function AppSidebar({
       }
       // Create a new blank page
       selectPage(null)
-      setShowWorkspace(false)
     } else if (title === "Refer & Earn") {
       // Require login before accessing referral program
       if (!requireAuth()) {
@@ -233,195 +181,84 @@ export function AppSidebar({
     // Handle other nav items as needed
   }
 
-  const handlePageOnHover = () => {
-    // Trigger workspace display when hovering PageOn
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-    setShowWorkspace(true)
-  }
-
-  const handlePageOnLeave = () => {
-    // Start hiding workspace when mouse leaves PageOn button
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowWorkspace(false)
-    }, 100)
-  }
-
-  const handleWorkspaceMouseEnter = () => {
-    // Clear timeout when mouse enters workspace content
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-  }
-
-  const handleWorkspaceMouseLeave = () => {
-    // Start hiding when mouse leaves workspace content
-    if (!selectedPageId) return
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowWorkspace(false)
-    }, 100)
-  }
-
+  // Handle sidebar hover to keep it open
   const handleSidebarMouseEnter = () => {
-    if (!selectedPageId) return
-    // Only clear timeout, don't actively show workspace
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
+    if (isInCanvasMode) {
+      setOpen(true)
     }
   }
 
-  const handleSidebarMouseLeave = (e: React.MouseEvent) => {
-    if (!selectedPageId) return
+  const handleSidebarMouseLeave = () => {
+    if (isInCanvasMode) {
+      setOpen(false)
+    }
+  }
 
-    // Check if any dropdown/menu is open in the sidebar
-    const hasOpenMenu = (e.currentTarget as HTMLElement).querySelector('[data-state="open"]')
-    if (hasOpenMenu) {
-      // Don't hide if there's an open menu - wait for it to close
+  const handleCreateNew = () => {
+    // Require login before proceeding
+    if (!requireAuth()) {
       return
     }
-
-    // Delay hiding to allow smooth transition
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowWorkspace(false)
-    }, 100)
+    // Return to main workspace page (AI Create)
+    selectPage(null)
   }
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Monitor when dropdowns close and hide workspace if mouse is outside
-  useEffect(() => {
-    if (!showWorkspace || !selectedPageId) return
-
-    const checkDropdownClose = () => {
-      // Use a small delay to let DOM update
-      setTimeout(() => {
-        const sidebarElement = document.querySelector('[data-slot="sidebar"]')
-        if (!sidebarElement) return
-
-        const hasOpenMenu = sidebarElement.querySelector('[data-state="open"]')
-        if (!hasOpenMenu) {
-          // No open menus, check if mouse is outside sidebar
-          const rect = sidebarElement.getBoundingClientRect()
-          const mouseEvent = (window as any).lastMouseEvent
-          if (mouseEvent) {
-            const isOutside =
-              mouseEvent.clientX < rect.left ||
-              mouseEvent.clientX > rect.right ||
-              mouseEvent.clientY < rect.top ||
-              mouseEvent.clientY > rect.bottom
-
-            if (isOutside) {
-              setShowWorkspace(false)
-            }
-          }
-        }
-      }, 50)
-    }
-
-    // Track mouse position
-    const trackMouse = (e: MouseEvent) => {
-      ;(window as any).lastMouseEvent = e
-    }
-
-    document.addEventListener('click', checkDropdownClose)
-    document.addEventListener('mousemove', trackMouse)
-
-    return () => {
-      document.removeEventListener('click', checkDropdownClose)
-      document.removeEventListener('mousemove', trackMouse)
-    }
-  }, [showWorkspace, selectedPageId])
-
-  // Sidebar always shows workspace
-  // When a page is selected, workspace can be shown on hover
-  const showWorkspaceContent = !selectedPageId || showWorkspace
 
   return (
     <Sidebar
-      collapsible={selectedPageId ? "offcanvas" : "icon"}
+      collapsible={collapsibleMode}
+      variant={isInCanvasMode ? "floating" : "sidebar"}
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
       {...props}
     >
-      <UnifiedHeader
-        onPageOnClick={() => handleNavMainSelect("AI Create")}
-        onPageOnHover={handlePageOnHover}
-        onPageOnLeave={handlePageOnLeave}
-        isInChatMode={!!selectedPageId}
-      />
-      <SidebarContent className="animate-in fade-in slide-in-from-left-4 duration-300">
-        {showWorkspaceContent ? (
-          <div
-            onMouseEnter={selectedPageId ? handleWorkspaceMouseEnter : undefined}
-            onMouseLeave={selectedPageId ? handleWorkspaceMouseLeave : undefined}
-            className="h-full"
-          >
-            <NavMain items={data.navMain} onSelect={handleNavMainSelect} />
-            <NavPages />
-          </div>
-        ) : (
-          <div className="flex h-full items-center justify-center p-4">
-            <p className="text-center text-sm text-muted-foreground">
-              Hover over PageOn to see your workspace
-            </p>
-          </div>
-        )}
+      <WorkspaceHeader onCreateNew={handleCreateNew} />
+      <SidebarContent>
+        <NavMain items={navMainItems} onSelect={handleNavMainSelect} />
+        <NavPages />
       </SidebarContent>
-      {showWorkspaceContent && (
-        <SidebarFooter className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton tooltip="Language">
-                    <Globe />
-                    <span>{languages.find((lang) => lang.code === selectedLanguage)?.name}</span>
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  side={isMobile ? "top" : "right"}
-                  align="start"
-                  className="w-48"
-                >
-                  {languages.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setSelectedLanguage(lang.code)}
-                      className="flex items-center justify-between"
-                    >
-                      <span>{lang.name}</span>
-                      {selectedLanguage === lang.code && <Check className="h-4 w-4" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Help">
-                <HelpCircle />
-                <span>Help</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Feedback">
-                <MessageCircle />
-                <span>Feedback</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <NavUser />
-        </SidebarFooter>
-      )}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton tooltip="Language">
+                  <Globe />
+                  <span>{languages.find((lang) => lang.code === selectedLanguage)?.name}</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side={isMobile ? "top" : "right"}
+                align="start"
+                className="w-48"
+              >
+                {languages.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => setSelectedLanguage(lang.code)}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{lang.name}</span>
+                    {selectedLanguage === lang.code && <Check className="h-4 w-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Help">
+              <HelpCircle />
+              <span>Help</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Feedback">
+              <MessageCircle />
+              <span>Feedback</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <NavUser />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
