@@ -55,6 +55,8 @@ import {
 } from "@/components/ui/collapsible"
 
 const INITIAL_DISPLAY_COUNT = 5
+const MIN_NAME_LENGTH = 1
+const MAX_NAME_LENGTH = 50
 
 export function NavPages() {
   const { isMobile, setOpen } = useSidebar()
@@ -62,6 +64,7 @@ export function NavPages() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
@@ -116,11 +119,24 @@ export function NavPages() {
   const displayedRootPages = isExpanded ? rootPages : rootPages.slice(0, INITIAL_DISPLAY_COUNT)
   const hasMore = rootPages.length > INITIAL_DISPLAY_COUNT
 
+  // Validation function
+  const validateName = (name: string): string | null => {
+    const trimmed = name.trim()
+    if (trimmed.length < MIN_NAME_LENGTH) {
+      return "Name cannot be empty"
+    }
+    if (trimmed.length > MAX_NAME_LENGTH) {
+      return `Name must be ${MAX_NAME_LENGTH} characters or less`
+    }
+    return null
+  }
+
   const handlePageAction = (action: string, page: Page) => {
     switch (action) {
       case "rename":
         setEditingId(page.id)
         setEditingValue(page.name)
+        setValidationError(null)
         break
       case "copy":
         const newPage = copyPage(page.id)
@@ -146,6 +162,7 @@ export function NavPages() {
       case "rename":
         setEditingId(folder.id)
         setEditingValue(folder.name)
+        setValidationError(null)
         break
       case "delete":
         const pagesInFolder = pages.filter((p) => p.folderId === folder.id)
@@ -161,9 +178,11 @@ export function NavPages() {
   }
 
   const handleEditConfirm = () => {
-    if (!editingId || !editingValue.trim()) {
-      setEditingId(null)
-      setEditingValue("")
+    if (!editingId) return
+
+    const error = validateName(editingValue)
+    if (error) {
+      setValidationError(error)
       return
     }
 
@@ -177,32 +196,45 @@ export function NavPages() {
 
     setEditingId(null)
     setEditingValue("")
+    setValidationError(null)
   }
 
   const handleEditCancel = () => {
     setEditingId(null)
     setEditingValue("")
+    setValidationError(null)
+  }
+
+  const handleEditingValueChange = (value: string) => {
+    setEditingValue(value)
+    // Real-time validation
+    if (value.trim().length > 0) {
+      setValidationError(validateName(value))
+    }
   }
 
   const handleCreateFolder = () => {
     setIsCreatingFolder(true)
     setEditingValue("")
+    setValidationError(null)
   }
 
   const handleNewFolderConfirm = () => {
-    if (!editingValue.trim()) {
-      setIsCreatingFolder(false)
-      setEditingValue("")
+    const error = validateName(editingValue)
+    if (error) {
+      setValidationError(error)
       return
     }
     createFolder(editingValue.trim())
     setIsCreatingFolder(false)
     setEditingValue("")
+    setValidationError(null)
   }
 
   const handleNewFolderCancel = () => {
     setIsCreatingFolder(false)
     setEditingValue("")
+    setValidationError(null)
   }
 
   const handleDeleteConfirm = () => {
@@ -288,21 +320,34 @@ export function NavPages() {
     const content = (
       <>
         {isEditing ? (
-          <div className="flex items-center gap-1 px-2 py-1.5">
-            <Input
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleEditConfirm()
-                } else if (e.key === "Escape") {
-                  handleEditCancel()
-                }
-              }}
-              onBlur={handleEditConfirm}
-              autoFocus
-              className="h-7 text-sm"
-            />
+          <div className="flex flex-col gap-1 px-2 py-1.5">
+            <div className="flex items-center gap-1">
+              <Input
+                value={editingValue}
+                onChange={(e) => handleEditingValueChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleEditConfirm()
+                  } else if (e.key === "Escape") {
+                    handleEditCancel()
+                  }
+                }}
+                onBlur={handleEditConfirm}
+                autoFocus
+                className={`h-7 text-sm ${validationError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+              />
+            </div>
+            {(validationError || editingValue.length > 0) && (
+              <div className="flex items-center justify-between text-xs px-1">
+                {validationError ? (
+                  <span className="text-destructive">{validationError}</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {editingValue.length}/{MAX_NAME_LENGTH}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -429,35 +474,68 @@ export function NavPages() {
         </div>
 
         <div
-          className={`flex-1 min-h-[400px] rounded-md transition-all duration-200 ${
+          className={`flex-1 min-h-[400px] rounded-md transition-all duration-200 relative ${
             dragOverTarget === "root" && isDragging
-              ? "bg-accent/50 ring-2 ring-primary/30"
+              ? "bg-primary/10 ring-2 ring-primary shadow-lg shadow-primary/20"
               : ""
           }`}
           onDragOver={handleRootDragOver}
           onDrop={handleDrop}
         >
+          {dragOverTarget === "root" && isDragging && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+              <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in zoom-in-95 fade-in duration-200">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span className="text-sm font-medium">Drop here to move to root</span>
+              </div>
+            </div>
+          )}
           <SidebarMenu className="flex-1 p-2 min-h-[300px]">
             {/* New Folder Creation */}
             {isCreatingFolder && (
               <SidebarMenuItem>
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <FolderIcon className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleNewFolderConfirm()
-                      } else if (e.key === "Escape") {
-                        handleNewFolderCancel()
-                      }
-                    }}
-                    onBlur={handleNewFolderConfirm}
-                    placeholder="Folder name"
-                    autoFocus
-                    className="h-7 text-sm"
-                  />
+                <div className="flex flex-col gap-1 px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <FolderIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      value={editingValue}
+                      onChange={(e) => handleEditingValueChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleNewFolderConfirm()
+                        } else if (e.key === "Escape") {
+                          handleNewFolderCancel()
+                        }
+                      }}
+                      onBlur={handleNewFolderConfirm}
+                      placeholder="Folder name"
+                      autoFocus
+                      className={`h-7 text-sm ${validationError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                  </div>
+                  {(validationError || editingValue.length > 0) && (
+                    <div className="flex items-center justify-between text-xs px-1 ml-6">
+                      {validationError ? (
+                        <span className="text-destructive">{validationError}</span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {editingValue.length}/{MAX_NAME_LENGTH}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </SidebarMenuItem>
             )}
@@ -481,30 +559,63 @@ export function NavPages() {
                     data-folder-drop
                     onDragOver={(e) => handleFolderDragOver(e, folder.id)}
                     onDrop={handleDrop}
-                    className={`rounded-md transition-all duration-200 ${
+                    className={`rounded-md transition-all duration-200 relative ${
                       isFolderHovered
-                        ? "bg-accent ring-2 ring-accent-foreground/20"
+                        ? "bg-primary/10 ring-2 ring-primary shadow-md shadow-primary/20 scale-[1.02]"
                         : ""
                     }`}
                   >
+                    {isFolderHovered && isDragging && (
+                      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none whitespace-nowrap">
+                        <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md shadow-lg flex items-center gap-2 animate-in slide-in-from-left-2 fade-in duration-200">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span className="text-xs font-medium">Drop into folder</span>
+                        </div>
+                      </div>
+                    )}
                     <SidebarMenuItem>
                       {isEditingFolder ? (
-                        <div className="flex items-center gap-2 px-2 py-1.5">
-                          <FolderIcon className="h-4 w-4 text-muted-foreground" />
-                          <Input
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleEditConfirm()
-                              } else if (e.key === "Escape") {
-                                handleEditCancel()
-                              }
-                            }}
-                            onBlur={handleEditConfirm}
-                            autoFocus
-                            className="h-7 text-sm flex-1"
-                          />
+                        <div className="flex flex-col gap-1 px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <FolderIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Input
+                              value={editingValue}
+                              onChange={(e) => handleEditingValueChange(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleEditConfirm()
+                                } else if (e.key === "Escape") {
+                                  handleEditCancel()
+                                }
+                              }}
+                              onBlur={handleEditConfirm}
+                              autoFocus
+                              className={`h-7 text-sm flex-1 ${validationError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                            />
+                          </div>
+                          {(validationError || editingValue.length > 0) && (
+                            <div className="flex items-center justify-between text-xs px-1 ml-6">
+                              {validationError ? (
+                                <span className="text-destructive">{validationError}</span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {editingValue.length}/{MAX_NAME_LENGTH}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <>

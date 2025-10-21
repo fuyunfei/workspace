@@ -182,6 +182,7 @@ export function ChatApp({ pageId }: ChatAppProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isChatPanelVisible, setIsChatPanelVisible] = useState(true)
   const chatPanelRef = React.useRef<HTMLDivElement>(null)
+  const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
   const { pages, getChatMessages, getChatMode, createPage, selectPage, addChatMessage, sidebarWidth, setSidebarWidth } = useWorkspace()
   const { requireAuth, requirePro, isPro } = useAuth()
@@ -197,6 +198,7 @@ export function ChatApp({ pageId }: ChatAppProps) {
 
   // Track previous chatMode to detect transitions
   const prevChatModeRef = React.useRef<ChatMode | null>(null)
+  const prevScrollPositionRef = React.useRef<number>(0)
 
   // Close workspace sidebar only when first entering canvas mode
   React.useEffect(() => {
@@ -207,6 +209,32 @@ export function ChatApp({ pageId }: ChatAppProps) {
     prevChatModeRef.current = chatMode
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMode, pageId])
+
+  // Auto-scroll to bottom when new messages arrive
+  React.useEffect(() => {
+    if (messagesEndRef.current && !isWorkspaceHome) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
+    }
+  }, [messages, isProcessing, isWorkspaceHome])
+
+  // Save and restore scroll position when switching chat modes
+  React.useEffect(() => {
+    const chatContainer = document.querySelector('.chat-messages-scroll')
+    if (!chatContainer) return
+
+    // Restore scroll position when mode changes
+    if (prevChatModeRef.current && prevChatModeRef.current !== chatMode) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        chatContainer.scrollTop = prevScrollPositionRef.current
+      }, 100)
+    }
+
+    // Save scroll position before unmount
+    return () => {
+      prevScrollPositionRef.current = chatContainer.scrollTop
+    }
+  }, [chatMode])
 
   const handleModelSelect = (modelId: string) => {
     const model = models.find((m) => m.id === modelId)
@@ -591,6 +619,8 @@ export function ChatApp({ pageId }: ChatAppProps) {
                     </div>
                   </div>
                 )}
+                {/* Scroll anchor */}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
@@ -772,6 +802,8 @@ export function ChatApp({ pageId }: ChatAppProps) {
                   </div>
                 </div>
               )}
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
           </div>
         </div>
