@@ -105,7 +105,7 @@ function ChatPanelRail({
 }: {
   sidebarWidth: number
   setSidebarWidth: (width: number) => void
-  chatPanelRef: React.RefObject<HTMLDivElement>
+  chatPanelRef: React.RefObject<HTMLDivElement | null>
 }) {
   const [isResizing, setIsResizing] = useState(false)
 
